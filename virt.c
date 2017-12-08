@@ -3,9 +3,24 @@
 #include <stdlib.h>
 #include <string.h>
 /**
+this program uses numbers to represent place in ram
+so you will have to manually add a prefix of where you want the instructions to go example:
+00:04 80
+00= place in ram you want the instructions to go, 04 will go in 00, and 80 will go in 01
+
+04= the opcode you want to use
+80= the memory location (for memory reference opcode only)
+
+if you mess up the numbers, the program will crash
+
+a more user friendly assembler is in the works
+
+for more information, see the program in the 'mult' file, it multiplies the numbers in memory location a0 and a1 together 
+
+
 sample program:
 00:84 53
-03:60
+02:60
 53:54
 54:03
 
