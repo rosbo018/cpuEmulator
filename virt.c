@@ -17,6 +17,9 @@ a more user friendly assembler is in the works
 
 for more information, see the program in the 'mult' file, it multiplies the numbers in memory location a0 and a1 together 
 
+inputs are data file and the place to start the execution, example: ./c data 0
+
+outputs are in hex, so don't be suprised
 
 sample program:
 00:84 53
@@ -37,39 +40,39 @@ void (*instructions[0xA1])();
 
 //memory reference
 void AND_D(unsigned char mem){
-  dr = ram[mem];
-  ac = ac & dr;
- iter++;
+    dr = ram[mem];
+    ac = ac & dr;
+    iter++;
 }
 
 void ADD_D(unsigned char mem){
-  dr = ram[mem];
-  ac += dr;
- iter++;
+    dr = ram[mem];
+    ac += dr;
+    iter++;
 }
 
 void SUB_D(unsigned char mem){
-  dr = ram[mem];
-  ac -= dr;
- iter++;
+    dr = ram[mem];
+    ac -= dr;
+    iter++;
 }
 
 void LDA_D(unsigned char mem){
-  dr = ram[mem];
-  //printf("%x", dr);
-  ac = dr;
-  iter++;
+    dr = ram[mem];
+    //printf("%x", dr);
+    ac = dr;
+    iter++;
 }
 
 void STA_D(unsigned char mem){
- ram[mem] = ac;
- iter++;
+    ram[mem] = ac;
+    iter++;
 }
 
 void BUN_D(unsigned char mem){
-  //printf("BUN\n");
-  iter = mem;
-  //printf("%x\n", iter);
+    //printf("BUN\n");
+    iter = mem;
+    //printf("%x\n", iter);
 }
 
 void ISZ_D(unsigned char mem){
@@ -103,7 +106,7 @@ void ASR(){
 void INC(){
   ac++;
 }
-//halt is implicit in the interpreitation
+//halt is implicitly checked in the execution
 void init(){
   instructions[0x01] = &AND_D;
   instructions[0x02] = &ADD_D;
@@ -203,6 +206,11 @@ void run(unsigned char startLocation){
 int main(int argc, char *argv[]){
   init();
   //printf("%s\n\n", argv[1]);
+  if(argc = 0 || argc > 3){
+    printf("inputs are data file and the place\
+to start the execution, example: ./c data 0");
+    exit(1);
+  }
   fileInput(argv[1]);
   if(argv[2] != NULL)
     run(atoi(argv[2]));
