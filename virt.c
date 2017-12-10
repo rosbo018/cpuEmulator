@@ -2,7 +2,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#define DIRECT_OP_LOWER 0x01
+#define DIRECT_OP_UPPER 0x20
+#define INDIRECT_OP_LOWER 0x81
+#define INDIRECT_OP_UPPER 0xA0
+#define AC_OP_LOWER 0x41
+#define AC_OP_UPPER 0x60
+#define HALT 0x60
+#define MEMSIZE 256
 /**
+   
+lol no generics
+
+
 this program uses numbers to represent place in ram
 so you will have to manually add a prefix of where you want the instructions to go example:
 00:04 80
@@ -28,13 +40,14 @@ sample program:
 54:03
 
  **/
-static unsigned char ram[256];
+static unsigned char ram[MEMSIZE];
+//all locations are defined as 0 by default
 
 unsigned char ac;
 unsigned char ar;
 unsigned char dr;
 unsigned char ir;
-static unsigned char iter;
+static unsigned char iter;//abstract pc
 
 void (*instructions[0xA1])();
 
@@ -77,8 +90,11 @@ void BUN_D(unsigned char mem){
 
 void ISZ_D(unsigned char mem){
   ram[mem]++;
-  if(ram[mem] == 0)
-    iter+=3;
+  if(ram[mem] == 0){
+    iter+=2;
+    if(!(0x41 <= ram[mem+1] && ram[mem+1] <= 0x60))
+      iter++;
+  }
   else
     iter++;
 }
@@ -108,19 +124,23 @@ void INC(){
 }
 //halt is implicitly checked in the execution
 void init(){
-  instructions[0x01] = &AND_D;
-  instructions[0x02] = &ADD_D;
-  instructions[0x03] = &SUB_D;
-  instructions[0x04] = &LDA_D;
-  instructions[0x08] = &STA_D;
-  instructions[0x10] = &BUN_D;
-  instructions[0x20] = &ISZ_D;
+  //ignore errors from this block of code
+  instructions[0x01] = AND_D;
+  instructions[0x02] = ADD_D;
+  instructions[0x03] = SUB_D;
+  instructions[0x04] = LDA_D;
+  instructions[0x08] = STA_D;
+  instructions[0x10] = BUN_D;
+  instructions[0x20] = ISZ_D;
+  //the reason is that the function pointers
+  //are being assigned onto a pointer array with
+  //a different input. It will work in practice
 
-  instructions[0x41] = &CLA;
-  instructions[0x42] = &CMA;
-  instructions[0x44] = &ASL;
-  instructions[0x48] = &ASR;
-  instructions[0x50] = &INC;
+  instructions[0x41] = CLA;
+  instructions[0x42] = CMA;
+  instructions[0x44] = ASL;
+  instructions[0x48] = ASR;
+  instructions[0x50] = INC;
 }
 
 void fileInput( char *fileInputName){
@@ -161,7 +181,7 @@ void assemblyHandle(char *line){
     unsigned char c_loc;
     unsigned char c_memloc;
     loc = strtok_r(rest, ":", &rest); 
-    c_loc = parseHex(loc);
+    c_loc = parseHex(loc);//unsigned char, requires int casting for pointer arithmatic
     loc = strtok_r(rest, " ", &rest); 
     c_inst = parseHex(loc);
     *(ram+((int)c_loc)) = c_inst;
@@ -173,40 +193,41 @@ void assemblyHandle(char *line){
 }
 
 void run(unsigned char startLocation){
-  iter = startLocation;
+  iter = startLocation; //start location as defined by the second argument
   
-  while((ir = ram[iter++]) != 0x60){
+  while((ir = ram[iter++]) != HALT){
     //char c = getc(stdin);
     //printf("iter %d\n", iter-1);
-    if(ir == 0x0)
-      iter++;
-    if(0x01 <= ir && ir <= 0x20){
+    if(DIRECT_OP_LOWER <= ir && ir <= DIRECT_OP_UPPER){// direct 
       // printf("op: %x; mem: %x\n", ir, ram[iter]);
       (*instructions[ir])(ram[iter]);
     }
-    else if((0x81 <= ir && ir <= 0xA0)){
+    else if((INDIRECT_OP_LOWER <= ir && ir <= INDIRECT_OP_UPPER)){
       //printf("op: %x; mem: %x\n", ir, ram[iter]);
       IND_MREF(ir, ram[iter]);
     }
-    else if((0x41 <= ir && ir <= 0x60)){
+    else if((AC_OP_LOWER <= ir && ir <= AC_OP_UPPER)){
       //printf("op: %x\n",  ir);
       (*instructions[ir])();
     }
     else{
-      printf("unrecognized instruction: %x\n", ir);
+      printf("unrecognized instruction: %d:%x\n", iter, ir);
       fflush(stdout);
       exit(1);
     }
     //printf("\n%x\n", ac);
 
     }
-  printf("\n%x\n", ac);
+    printf("\n%x\n", ac);
+    for(int i = 0; i < 0xFF; i++)
+      if(ram[i] != 0)
+        printf("%d: %x\n",i, ram[i]);
 }
 
 int main(int argc, char *argv[]){
   init();
   //printf("%s\n\n", argv[1]);
-  if(argc = 0 || argc > 3){
+  if(argc == 0 || argc > 3){
     printf("inputs are data file and the place\
 to start the execution, example: ./c data 0");
     exit(1);

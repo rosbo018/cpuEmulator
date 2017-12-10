@@ -1,2 +1,2 @@
 all:
-	gcc virt.c -o virt
+	gcc -Wall -pedantic virt.c -o virt
