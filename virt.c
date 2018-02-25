@@ -12,9 +12,6 @@
 #define MEMSIZE 256
 /**
    
-lol no generics
-
-
 this program uses numbers to represent place in ram
 so you will have to manually add a prefix of where you want the instructions to go example:
 00:04 80
@@ -43,52 +40,65 @@ sample program:
 static unsigned char ram[MEMSIZE];
 //all locations are defined as 0 by default
 
+//accumulator
 unsigned char ac;
+//address register
 unsigned char ar;
+//direct register (feeds into accumulator)
 unsigned char dr;
+//instruction register
 unsigned char ir;
+//pc = program counter
 static unsigned char iter;//abstract pc
 
 void (*instructions[0xA1])();
 
 //memory reference
 void AND_D(unsigned char mem){
-    dr = ram[mem];
-    ac = ac & dr;
-    iter++;
+  // logical and
+  dr = ram[mem];
+  ac = ac & dr;
+  iter++;
 }
 
 void ADD_D(unsigned char mem){
-    dr = ram[mem];
-    ac += dr;
-    iter++;
+  //addition
+  dr = ram[mem];
+  ac += dr;
+  iter++;
 }
 
 void SUB_D(unsigned char mem){
-    dr = ram[mem];
-    ac -= dr;
-    iter++;
+  // subtract
+  dr = ram[mem];
+  ac -= dr;
+  iter++;
 }
 
 void LDA_D(unsigned char mem){
-    dr = ram[mem];
-    //printf("%x", dr);
-    ac = dr;
-    iter++;
+  //load
+  dr = ram[mem];
+ 
+  //printf("%x", dr);
+  ac = dr;
+  iter++;
 }
 
 void STA_D(unsigned char mem){
-    ram[mem] = ac;
-    iter++;
+  // store 
+  ram[mem] = ac;
+  iter++;
 }
 
 void BUN_D(unsigned char mem){
-    //printf("BUN\n");
-    iter = mem;
-    //printf("%x\n", iter);
+  //branch uncondictionally
+  //printf("BUN\n");
+  iter = mem;
+  //printf("%x\n", iter);
 }
 
 void ISZ_D(unsigned char mem){
+  //increments the location in memory and skips the next memory location if zero
   ram[mem]++;
   if(ram[mem] == 0){
     iter+=2;
@@ -100,30 +110,38 @@ void ISZ_D(unsigned char mem){
 }
 // indirect
 void IND_MREF(unsigned char inst, unsigned char indmem){
+  //accesses indirect memory, then calls the op with the memory from the reference
   //printf("indirect: %x, %x", inst-0x80 ,ram[indmem] );
-    fflush(stdout);
+  fflush(stdout);
   (*instructions[inst-0x80])(ram[indmem]);
 }
 
 
 //register reference
 void CLA(){
+  //clear
   ac = 0;
 }
 void CMA(){
+  //compliment (one's compliment)
   ac = ~ac;
 }
 void ASL(){
+  //arithmetic shift left
   ac = ac << 1;
 }
 void ASR(){
+  //arithmetic shift right
   ac = ac >> 1;
 }
 void INC(){
+  //increment
   ac++;
 }
+
 //halt is implicitly checked in the execution
 void init(){
+  //initialises the instruction function pointer array
   //ignore errors from this block of code
   instructions[0x01] = AND_D;
   instructions[0x02] = ADD_D;
@@ -144,6 +162,9 @@ void init(){
 }
 
 void fileInput( char *fileInputName){
+  //loads the file, handles the lines and puts the instructions into
+  //the correct place in the ram.
+  //since this function interacts with the global ram, it does not have to return anything.
   char *line = NULL;
   size_t len = 0;
   ssize_t read;
@@ -151,48 +172,58 @@ void fileInput( char *fileInputName){
   if (assembly == NULL)
     exit(EXIT_FAILURE);
   while((read = getline(&line, &len, assembly)) != -1){
-    printf("%s", line);
+    //printf("%s", line);
     fflush(stdout);
     if(len >= 2)
       assemblyHandle(line);
+    free(line);
   }
-  free(line);
+  fclose(assembly);
   
 }
 unsigned char parse_char(char c){
-    if ('0' <= c && c <= '9') return c - '0';
-    if ('a' <= c && c <= 'f') return 10 + c - 'a';
-    if ('A' <= c && c <= 'F') return 10 + c - 'A';
-    printf("UNKNOWN INPUT");
-    fflush(stdout);
-    exit(1);
+  //returns the decimal value of hex
+  if ('0' <= c && c <= '9')
+    return c - '0';
+  if ('a' <= c && c <= 'f') 
+    return 10 + c - 'a';
+  if ('A' <= c && c <= 'F') 
+    return 10 + c - 'A';
+  printf("UNKNOWN INPUT");
+  fflush(stdout);
+  exit(1);
 }
 unsigned char parseHex(char *num){
+  //parse the hex 2 digit number to decimal
   //printf("parseing '%s'\n", num);
   return ((parse_char(*(num)) * 0x10) + parse_char(*(num+1)));
 }
 
 //
 void assemblyHandle(char *line){
-    char *rest = line;
-
-    char *loc;
-    unsigned char c_inst;
-    unsigned char c_loc;
-    unsigned char c_memloc;
-    loc = strtok_r(rest, ":", &rest); 
-    c_loc = parseHex(loc);//unsigned char, requires int casting for pointer arithmatic
-    loc = strtok_r(rest, " ", &rest); 
-    c_inst = parseHex(loc);
-    *(ram+((int)c_loc)) = c_inst;
-    if((loc = strtok_r(rest, " ", &rest)) != NULL){
-        c_memloc = parseHex(loc);
-        *(ram+((int)c_loc)+1) = c_memloc;
-    }
+  //parses a line of the input file, and puts it in memory
+  char *rest = line;
+  char *loc;
+  unsigned char c_inst;
+  unsigned char c_loc;
+  unsigned char c_memloc;
+  loc = strtok_r(rest, ":", &rest); 
+  c_loc = parseHex(loc);//unsigned char, requires int casting for pointer arithmatic
+  loc = strtok_r(rest, " ", &rest); 
+  c_inst = parseHex(loc);
+  *(ram+((int)c_loc)) = c_inst;
+  if((loc = strtok_r(rest, " ", &rest)) != NULL){
+    c_memloc = parseHex(loc);
+    *(ram+((int)c_loc)+1) = c_memloc;
+  }
 
 }
 
 void run(unsigned char startLocation){
+  //runs the program from the starting location until when the program ends(or fails). 
+  //indirect memory opcodes will first go through IND_MREF to find the value of the ram location
+  //that they point to, then call the direct memory opcode
+
   iter = startLocation; //start location as defined by the second argument
   
   while((ir = ram[iter++]) != HALT){
@@ -218,8 +249,9 @@ void run(unsigned char startLocation){
     //printf("\n%x\n", ac);
 
     }
-    printf("\n%x\n", ac);
-    for(int i = 0; i < 0xFF; i++)
+  //prints the ram
+  printf("\n%x\n", ac);
+  for(int i = 0; i < 0xFF; i++)
       if(ram[i] != 0)
         printf("%d: %x\n",i, ram[i]);
 }
